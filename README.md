@@ -37,6 +37,10 @@ curl localhost:8080/actuator/health
 | `local` (기본) | 로컬 개발 | `application-local.yml` |
 | `prod` | 운영 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` |
 
+- 로컬의 `bookshelf/bookshelf` 계정은 로컬 Docker DB 전용입니다.
+- 운영 환경변수는 배포 플랫폼의 시크릿 관리 기능으로 주입하며, 저장소에 커밋하지 않습니다.
+- `.env`는 현재 사용하지 않습니다(Spring Boot가 자동으로 읽지 않음). 필요해질 때 `.env.example`과 함께 도입합니다.
+
 ## 패키지 구조
 
 도메인별로 나누고, 공통 코드는 `global`에 둡니다.
