@@ -1,0 +1,170 @@
+Table users {
+  id bigint [pk, increment]
+  email varchar(255) [not null, unique]
+  nickname varchar(12) [not null]
+  created_at timestamp [not null]
+}
+
+Enum auth_provider {
+  LOCAL
+  KAKAO
+}
+
+Table user_auth_accounts {
+  id bigint [pk, increment]
+
+  user_id bigint [not null, ref: > users.id]
+
+  provider auth_provider [not null]
+  provider_user_id varchar(255)
+  password_hash varchar(255)
+  created_at timestamp [not null]
+
+  indexes {
+    (provider, provider_user_id) [unique]
+    (user_id, provider) [unique]
+  }
+}
+
+
+Table books {
+  id bigint [pk, increment]
+  isbn varchar(13) [unique]
+  title varchar(255) [not null]
+  author varchar(255)
+  publisher varchar(255)
+}
+
+
+// 책 상태
+Enum book_condition {
+  GREAT
+  GOOD
+  FAIR
+}
+
+// 교환 가능 상태
+Enum user_book_status {
+  AVAILABLE
+  RESERVED
+  EXCHANGED
+}
+
+
+Table user_books {
+  id bigint [pk, increment]
+  book_id bigint [not null, ref: > books.id]
+  user_id bigint [not null, ref: > users.id]
+
+  condition book_condition [not null]
+  status user_book_status [not null, default: 'AVAILABLE']
+  is_hidden boolean [not null, default: false]
+
+  description text
+  created_at timestamp [not null]
+}
+
+Table book_images {
+  id bigint [pk, increment]
+  user_book_id bigint [not null, ref: > user_books.id]
+  image_url varchar(2048) [not null]
+  sort_order int [not null]
+
+  indexes {
+    (user_book_id, sort_order) [unique]
+  }
+}
+
+// [교환 수락 규칙]
+// 1. 두 도서 모두 AVAILABLE 상태여야 수락 가능
+// 2. 수락 시 exchanges.status = ACCEPTED
+// 3. 두 도서의 status = RESERVED
+// 4. 위 변경은 하나의 트랜잭션에서 처리
+// 5. 동시 수락 방지를 위해 락 또는 조건부 UPDATE 필요
+
+Enum exchange_status {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+  COMPLETED
+}
+
+// [교환 취소 규칙]
+// 1. PENDING 상태에서는 요청자가 취소 가능
+// 2. ACCEPTED 상태에서는 양쪽 사용자 모두 취소 가능
+// 3. ACCEPTED 취소 시 두 도서를 AVAILABLE로 복구
+// 4. COMPLETED 상태에서는 일반 취소 불가
+// 5. 상태 변경과 도서 복구는 하나의 트랜잭션에서 처리
+// 6. 동시 요청으로 인한 상태 충돌 방지 필요
+
+// [교환 완료 규칙]
+// 1. ACCEPTED 상태에서만 완료 확인 가능
+// 2. 요청자(requester)와 상대 도서 소유자(owner)가 각각 완료 확인
+// 3. 양쪽 모두 확인하면 status = COMPLETED, 두 도서 status = EXCHANGED
+// 4. 한쪽만 확인한 상태에서는 ACCEPTED 유지
+// 5. 확인 처리와 상태 변경은 하나의 트랜잭션에서 처리
+// 6. 후기는 COMPLETED 교환에만 작성 가능
+
+Table exchanges {
+  id bigint [pk, increment]
+
+  requester_id bigint [not null, ref: > users.id]
+
+  offered_user_book_id bigint [not null, ref: > user_books.id]
+  requested_user_book_id bigint [not null, ref: > user_books.id]
+
+  status exchange_status [not null, default: 'PENDING']
+
+  // 양쪽 완료 확인 시각 (owner = requested_user_book의 소유자)
+  requester_confirmed_at timestamp
+  owner_confirmed_at timestamp
+
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  }
+
+// 채팅방 테이블
+
+// id: 채팅방 고유 ID
+// exchange_id: 어떤 교환 요청의 채팅방인지
+// created_at: 채팅방 생성 시각
+
+Table chat_rooms {
+  id bigint [pk, increment]
+  exchange_id bigint [not null, unique]
+  created_at timestamp [not null]
+}
+
+Ref: chat_rooms.exchange_id - exchanges.id
+
+
+// 채팅 메시지 테이블
+
+Table chat_messages {
+  id bigint [pk, increment]
+
+  chat_room_id bigint [not null, ref: > chat_rooms.id]
+  sender_id bigint [not null, ref: > users.id]
+
+  content text [not null]
+  created_at timestamp [not null]
+}
+
+// 후기 테이블
+Table reviews {
+  id bigint [pk, increment]
+
+  exchange_id bigint [not null, ref: > exchanges.id]
+  reviewer_id bigint [not null, ref: > users.id]
+  reviewee_id bigint [not null, ref: > users.id]
+
+  rating int [not null, note: '1~5점만 허용']
+  content text
+
+  created_at timestamp [not null]
+
+  indexes {
+    (exchange_id, reviewer_id) [unique]
+  }
+}
