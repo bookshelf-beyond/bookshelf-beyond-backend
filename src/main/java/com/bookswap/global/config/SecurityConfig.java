@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -39,6 +41,11 @@ public class SecurityConfig {
 						.authenticationEntryPoint(entryPoint(objectMapper))
 						.accessDeniedHandler(accessDenied(objectMapper)))
 				.build();
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
 	}
 
 	/** 토큰이 만료·위조된 경우 필터가 남긴 사유(EXPIRED_TOKEN/INVALID_TOKEN)를, 없으면 UNAUTHORIZED 를 응답한다. */
