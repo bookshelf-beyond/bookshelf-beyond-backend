@@ -6,6 +6,9 @@ spring:
   jpa:
     show-sql: true
 
+jwt:
+  secret: local-dev-only-jwt-secret-key-change-me-0123456789
+
 logging:
   level:
     com.bookswap: debug
